@@ -1,0 +1,50 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ApiResponseDashboardStatsResponse",
+    "type": "object",
+    "properties": {
+        "success": {
+            "type": "boolean"
+        },
+        "message": {
+            "type": "string"
+        },
+        "data": {
+            "type": "object",
+            "properties": {
+                "totalActive": {
+                    "type": "integer"
+                },
+                "received": {
+                    "type": "integer"
+                },
+                "calledBackResponded": {
+                    "type": "integer"
+                },
+                "calledBackNotResponded": {
+                    "type": "integer"
+                },
+                "notInterested": {
+                    "type": "integer"
+                },
+                "furtherProceed": {
+                    "type": "integer"
+                },
+                "documentCollection": {
+                    "type": "integer"
+                },
+                "applicationSubmitted": {
+                    "type": "integer"
+                },
+                "totalArchived": {
+                    "type": "integer"
+                }
+            },
+            "additionalProperties": true
+        },
+        "timestamp": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": true
+}

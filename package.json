@@ -1,0 +1,38 @@
+{
+    "name": "jono-consultancy-api-automation",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "BDD-style API automation for Jono Consultancy",
+    "scripts": {
+        "bddgen": "bddgen",
+        "test": "bddgen && playwright test",
+        "test:sanity": "bddgen && playwright test --grep @Sanity",
+        "test:smoke": "bddgen && playwright test --grep @Smoke",
+        "test:smoke:allure": "rm -rf reports/allure-results/smoke reports/allure-html/smoke reports/smoke && cross-env ALLURE_RESULTS_DIR=reports/allure-results/smoke PLAYWRIGHT_HTML_OUTPUT_DIR=reports/smoke npm run test:smoke && allure generate reports/allure-results/smoke --clean --output reports/allure-html/smoke",
+        "test:regression": "bddgen && playwright test --grep @Regression",
+        "test:regression:allure": "rm -rf reports/allure-results/regression reports/allure-html/regression reports/regression && cross-env ALLURE_RESULTS_DIR=reports/allure-results/regression PLAYWRIGHT_HTML_OUTPUT_DIR=reports/regression npm run test:regression && allure generate reports/allure-results/regression --clean --output reports/allure-html/regression",
+        "test:security": "bddgen && playwright test --grep @Security",
+        "test:security:allure": "rm -rf reports/allure-results/security reports/allure-html/security reports/security && cross-env ALLURE_RESULTS_DIR=reports/allure-results/security PLAYWRIGHT_HTML_OUTPUT_DIR=reports/security npm run test:security && allure generate reports/allure-results/security --clean --output reports/allure-html/security",
+        "test:e2e": "bddgen && playwright test --grep @E2E",
+        "test:ui": "bddgen && playwright test --project=ui",
+        "test:api": "bddgen && playwright test --project=api",
+        "report": "playwright show-report reports/regression",
+        "report:smoke": "playwright show-report reports/smoke",
+        "report:regression": "playwright show-report reports/regression",
+        "allure:generate": "allure generate reports/allure-results --clean --output reports/allure-html",
+        "allure:open": "allure open reports/allure-html"
+    },
+    "devDependencies": {
+        "@faker-js/faker": "^9.9.0",
+        "@playwright/test": "1.59.0",
+        "ajv": "^8.17.1",
+        "ajv-formats": "^3.0.1",
+        "allure-commandline": "^2.46.1",
+        "allure-playwright": "3.11.0",
+        "dotenv": "^16.6.1",
+        "cross-env": "^7.0.3",
+        "playwright": "1.59.0",
+        "playwright-bdd": "^8.2.0"
+    }
+}

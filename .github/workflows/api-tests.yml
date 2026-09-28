@@ -1,0 +1,218 @@
+name: API and UI Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_live_registration:
+        description: 'Run one live fake registration and verify it appears in admin (creates one lead)'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://api.jonoconsultancy.com' }}
+      PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://jonoconsultancy.com' }}
+      ADMIN_BASE_URL: ${{ vars.ADMIN_BASE_URL || 'https://api.jonoconsultancy.com' }}
+      ADMIN_PORTAL_URL: ${{ vars.ADMIN_PORTAL_URL || 'https://admin.jonoconsultancy.com' }}
+      ADMIN_USER: ${{ secrets.ADMIN_USER }}
+      ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
+      ALLOW_LIVE_REGISTRATION: 'false'
+      PLAYWRIGHT_HTML_OUTPUT_DIR: reports/smoke
+      ALLURE_RESULTS_DIR: reports/allure-results/smoke
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Java for Allure
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Report admin credential availability
+        run: |
+          if [[ -z "$ADMIN_USER" || -z "$ADMIN_PASS" ]]; then
+            echo "Admin-authenticated scenarios will be skipped because ADMIN_USER/ADMIN_PASS secrets are not configured."
+          else
+            echo "Admin credentials are configured; values are not displayed."
+          fi
+
+      - name: Run smoke suite
+        run: npm run test:smoke:allure
+
+      - name: Generate smoke Allure report
+        if: always()
+        run: |
+          if find reports/allure-results/smoke -type f -name '*-result.json' -print -quit 2>/dev/null | grep -q .; then
+            npx allure generate reports/allure-results/smoke --clean --output reports/allure-html/smoke
+          fi
+
+      - name: Upload smoke test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-playwright-allure-report-${{ github.run_attempt }}
+          path: |
+            reports/smoke/
+            reports/allure-results/smoke/
+            reports/allure-html/smoke/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  regression:
+    name: Regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://api.jonoconsultancy.com' }}
+      PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://jonoconsultancy.com' }}
+      ADMIN_BASE_URL: ${{ vars.ADMIN_BASE_URL || 'https://api.jonoconsultancy.com' }}
+      ADMIN_PORTAL_URL: ${{ vars.ADMIN_PORTAL_URL || 'https://admin.jonoconsultancy.com' }}
+      ADMIN_USER: ${{ secrets.ADMIN_USER }}
+      ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
+      ALLOW_LIVE_REGISTRATION: 'false'
+      PLAYWRIGHT_HTML_OUTPUT_DIR: reports/regression
+      ALLURE_RESULTS_DIR: reports/allure-results/regression
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Java for Allure
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Report admin credential availability
+        run: |
+          if [[ -z "$ADMIN_USER" || -z "$ADMIN_PASS" ]]; then
+            echo "Admin-authenticated scenarios will be skipped because ADMIN_USER/ADMIN_PASS secrets are not configured."
+          else
+            echo "Admin credentials are configured; values are not displayed."
+          fi
+
+      - name: Run regression suite
+        run: npm run test:regression:allure
+
+      - name: Generate regression Allure report
+        if: always()
+        run: |
+          if find reports/allure-results/regression -type f -name '*-result.json' -print -quit 2>/dev/null | grep -q .; then
+            npx allure generate reports/allure-results/regression --clean --output reports/allure-html/regression
+          fi
+
+      - name: Upload regression test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-playwright-allure-report-${{ github.run_attempt }}
+          path: |
+            reports/regression/
+            reports/allure-results/regression/
+            reports/allure-html/regression/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  live_registration_e2e:
+    name: Opt-in live registration E2E
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_registration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://api.jonoconsultancy.com' }}
+      ADMIN_BASE_URL: ${{ vars.ADMIN_BASE_URL || 'https://api.jonoconsultancy.com' }}
+      ADMIN_USER: ${{ secrets.ADMIN_USER }}
+      ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
+      ALLOW_LIVE_REGISTRATION: 'true'
+      PLAYWRIGHT_HTML_OUTPUT_DIR: reports/live-registration
+      ALLURE_RESULTS_DIR: reports/allure-results/live-registration
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Java for Allure
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify admin credentials are configured
+        run: |
+          if [[ -z "$ADMIN_USER" || -z "$ADMIN_PASS" ]]; then
+            echo "::error::Configure ADMIN_USER and ADMIN_PASS secrets before running live registration E2E. No lead was submitted."
+            exit 1
+          fi
+
+      - name: Run one live registration and admin read-back
+        run: npx playwright test --project=api --grep 'A public registration can be cross-checked in the admin API'
+
+      - name: Generate live E2E Allure report
+        if: always()
+        run: |
+          if find reports/allure-results/live-registration -type f -name '*-result.json' -print -quit 2>/dev/null | grep -q .; then
+            npx allure generate reports/allure-results/live-registration --clean --output reports/allure-html/live-registration
+          fi
+
+      - name: Upload live E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-registration-e2e-${{ github.run_attempt }}
+          path: |
+            reports/live-registration/
+            reports/allure-results/live-registration/
+            reports/allure-html/live-registration/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

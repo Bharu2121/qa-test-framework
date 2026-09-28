@@ -1,0 +1,14 @@
+{
+    "firstName": "Qa",
+    "lastName": "Example",
+    "dateOfBirth": "1998-04-12",
+    "gender": "Prefer not to say",
+    "email": "qa.example.20260927@example.invalid",
+    "mobile": "9876543210",
+    "whatsapp": "",
+    "city": "Test City",
+    "state": "Telangana",
+    "country": "India",
+    "preferredCountry": "Canada",
+    "qualification": "QA test qualification"
+}
