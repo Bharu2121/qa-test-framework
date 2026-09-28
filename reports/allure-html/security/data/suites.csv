@@ -1,0 +1,6 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","1","Logout invalidates the active session and blocks follow-up protected access","api","2026-09-28","passed","2026-09-28","Administrator security and authentication controls","features/admin/AdminSecurity.feature.spec.js","",""
+"","3","Protected admin APIs reject missing, malformed, expired, and tampered JWTs","api","2026-09-28","passed","2026-09-28","Administrator security and authentication controls","features/admin/AdminSecurity.feature.spec.js","",""
+"","4","Password recovery and reset flow validates tokens and password rules","api","2026-09-28","passed","2026-09-28","Administrator security and authentication controls","features/admin/AdminSecurity.feature.spec.js","",""
+"","13","A valid admin login returns a bearer JWT and a failed login never exposes the password","api","2026-09-28","passed","2026-09-28","Administrator security and authentication controls","features/admin/AdminSecurity.feature.spec.js","",""
+"","2","Repeated wrong login attempts are rate-limited by the application policy without user-enumeration leaks","api","2026-09-28","passed","2026-09-28","Administrator security and authentication controls","features/admin/AdminSecurity.feature.spec.js","",""
