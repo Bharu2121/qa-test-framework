@@ -13,6 +13,7 @@
         "test:regression": "bddgen && playwright test --grep @Regression",
         "test:regression:allure": "rm -rf reports/allure-results/regression reports/allure-html/regression reports/regression && cross-env ALLURE_RESULTS_DIR=reports/allure-results/regression PLAYWRIGHT_HTML_OUTPUT_DIR=reports/regression npm run test:regression && allure generate reports/allure-results/regression --clean --output reports/allure-html/regression",
         "test:security": "bddgen && playwright test --grep @Security",
+        "test:production-safe": "bddgen && cross-env ALLOW_READONLY_SECURITY_PROBES=true ALLOW_PRODUCTION_SECURITY_PROBES=true SECURITY_TEST_BASE_URL=https://api.jonoconsultancy.com playwright test --grep @ProductionSafeProbe",
         "test:security:allure": "rm -rf reports/allure-results/security reports/allure-html/security reports/security && cross-env ALLURE_RESULTS_DIR=reports/allure-results/security PLAYWRIGHT_HTML_OUTPUT_DIR=reports/security npm run test:security && allure generate reports/allure-results/security --clean --output reports/allure-html/security",
         "test:e2e": "bddgen && playwright test --grep @E2E",
         "test:ui": "bddgen && playwright test --project=ui",

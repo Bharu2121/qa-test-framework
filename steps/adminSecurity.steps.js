@@ -3,6 +3,71 @@ import { AdminLeadsApiClient } from '../clients/AdminLeadsApiClient.js';
 import { validateAgainstSchema } from '../utils/schemaValidator.js';
 import { Given, When, Then } from '../support/hooks.js';
 
+const sensitiveFieldPattern = /password|token|secret|authorization|cookie|api[-_]?key|email|username/i;
+
+const redactDiagnosticText = (value, sensitiveValues) => {
+  let sanitized = value;
+  for (const sensitiveValue of sensitiveValues) {
+    sanitized = sanitized.replaceAll(sensitiveValue, '[REDACTED]');
+  }
+  return sanitized
+    .replace(/\bBearer\s+\S+/gi, 'Bearer [REDACTED]')
+    .replace(/\beyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/g, '[REDACTED]');
+};
+
+const redactDiagnosticValue = (value, sensitiveValues) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => redactDiagnosticValue(item, sensitiveValues));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+      key,
+      sensitiveFieldPattern.test(key) ? '[REDACTED]' : redactDiagnosticValue(item, sensitiveValues),
+    ]));
+  }
+  return typeof value === 'string' ? redactDiagnosticText(value, sensitiveValues) : value;
+};
+
+const getResponseDiagnostic = async (response, apiState) => {
+  const sensitiveValues = [
+    process.env.ADMIN_USER,
+    process.env.ADMIN_PASS,
+    apiState.securityProbeToken,
+    apiState.invalidLoginEmail,
+    apiState.invalidLoginPassword,
+  ].filter(Boolean);
+  const headers = (await response.headersArray()).map(({ name, value }) => ({
+    name,
+    value: sensitiveFieldPattern.test(name) ? '[REDACTED]' : redactDiagnosticText(value, sensitiveValues),
+  }));
+  const responseBody = await response.text();
+  let body;
+  try {
+    body = JSON.stringify(redactDiagnosticValue(JSON.parse(responseBody), sensitiveValues), null, 2);
+  } catch {
+    body = redactDiagnosticText(responseBody, sensitiveValues);
+  }
+
+  return [
+    `Response: ${response.status()} ${response.url()}`,
+    `Headers: ${JSON.stringify(headers, null, 2)}`,
+    `Body: ${body}`,
+  ].join('\n');
+};
+
+const assertWithResponse = async (response, apiState, testInfo, assertions) => {
+  const diagnostic = await getResponseDiagnostic(response, apiState);
+  try {
+    await assertions(diagnostic);
+  } catch (error) {
+    await testInfo.attach('response-details.txt', {
+      body: diagnostic,
+      contentType: 'text/plain',
+    });
+    throw error;
+  }
+};
+
 const buildMockResponse = ({ status, body, token = null, headers = {} }) => ({
   status: () => status,
   ok: () => status >= 200 && status < 300,
@@ -167,7 +232,7 @@ Given('read-only security probes are explicitly enabled', async ({ apiState }) =
   apiState.securityProbeBaseUrl = parsedUrl.toString().replace(/\/$/, '');
 });
 
-Given('I authenticate the read-only security probe as an authorized administrator', async ({ apiContext, apiState }) => {
+Given('I authenticate the read-only security probe as an authorized administrator', async ({ apiContext, apiState, $testInfo }) => {
   const username = process.env.ADMIN_USER;
   const password = process.env.ADMIN_PASS;
   test.skip(!username || !password, 'Set authorized ADMIN_USER and ADMIN_PASS for lead detail probes.');
@@ -177,9 +242,12 @@ Given('I authenticate the read-only security probe as an authorized administrato
     data: { email: username, password },
     maxRedirects: 0,
   });
-  expect(response.status()).toBe(200);
-  const body = await response.json();
-  expect(typeof body?.data?.token === 'string' && body.data.token.length > 0).toBe(true);
+  let body;
+  await assertWithResponse(response, apiState, $testInfo, async (diagnostic) => {
+    expect(response.status(), diagnostic).toBe(200);
+    body = await response.json();
+    expect(typeof body?.data?.token === 'string' && body.data.token.length > 0, diagnostic).toBe(true);
+  });
   apiState.securityProbeToken = body.data.token;
 });
 
@@ -234,47 +302,57 @@ When('I request admin lead detail for identifier {string}', async ({ apiContext,
   });
 });
 
-Then('the protected request is rejected without exposing data', async ({ apiState }) => {
-  expect([401, 403]).toContain(apiState.securityProbeResponse.status());
+Then('the protected request is rejected without exposing data', async ({ apiState, $testInfo }) => {
+  await assertWithResponse(apiState.securityProbeResponse, apiState, $testInfo, (diagnostic) => {
+    expect([401, 403], diagnostic).toContain(apiState.securityProbeResponse.status());
+  });
 });
 
-Then('the profile belongs to the configured administrator and exposes no credentials', async ({ apiState }) => {
-  expect(apiState.ownProfileResponse.status()).toBe(200);
-  const body = await apiState.ownProfileResponse.json();
-  const result = await validateAgainstSchema('admin_profile.json', body);
-  expect(result.valid).toBe(true);
-  expect(body.data.email === process.env.ADMIN_USER).toBe(true);
-  const exposedCredentials = ['password', 'passwordHash', 'token', 'refreshToken']
-    .some((field) => Object.hasOwn(body.data, field));
-  expect(exposedCredentials).toBe(false);
+Then('the profile belongs to the configured administrator and exposes no credentials', async ({ apiState, $testInfo }) => {
+  await assertWithResponse(apiState.ownProfileResponse, apiState, $testInfo, async (diagnostic) => {
+    expect(apiState.ownProfileResponse.status(), diagnostic).toBe(200);
+    const body = await apiState.ownProfileResponse.json();
+    const result = await validateAgainstSchema('admin_profile.json', body);
+    expect(result.valid, `${diagnostic}\nSchema errors: ${JSON.stringify(result.errors)}`).toBe(true);
+    expect(body.data.email === process.env.ADMIN_USER, diagnostic).toBe(true);
+    const exposedCredentials = ['password', 'passwordHash', 'token', 'refreshToken']
+      .some((field) => Object.hasOwn(body.data, field));
+    expect(exposedCredentials, diagnostic).toBe(false);
+  });
 });
 
-Then('the dashboard response contains non-negative aggregate counters', async ({ apiState }) => {
-  expect(apiState.securityProbeDashboardResponse.status()).toBe(200);
-  const body = await apiState.securityProbeDashboardResponse.json();
-  const result = await validateAgainstSchema('dashboard_stats.json', body);
-  expect(result.valid).toBe(true);
-  const counters = Object.values(body.data);
-  expect(counters.length > 0 && counters.every((counter) => Number.isFinite(counter) && counter >= 0)).toBe(true);
+Then('the dashboard response contains non-negative aggregate counters', async ({ apiState, $testInfo }) => {
+  await assertWithResponse(apiState.securityProbeDashboardResponse, apiState, $testInfo, async (diagnostic) => {
+    expect(apiState.securityProbeDashboardResponse.status(), diagnostic).toBe(200);
+    const body = await apiState.securityProbeDashboardResponse.json();
+    const result = await validateAgainstSchema('dashboard_stats.json', body);
+    expect(result.valid, `${diagnostic}\nSchema errors: ${JSON.stringify(result.errors)}`).toBe(true);
+    const counters = Object.values(body.data);
+    expect(counters.length > 0 && counters.every((counter) => Number.isFinite(counter) && counter >= 0), diagnostic).toBe(true);
+  });
 });
 
-Then('the login attempt is rejected without echoing credentials or internal errors', async ({ apiState }) => {
-  expect(apiState.invalidLoginResponse.status()).toBe(401);
-  const body = await apiState.invalidLoginResponse.text();
-  const echoesCredentials = body.includes(apiState.invalidLoginEmail)
-    || body.includes(apiState.invalidLoginPassword);
-  const exposesInternals = /exception|stack trace|sqlstate|jdbc|hibernate|select\s+.+\s+from/i.test(body);
-  expect(echoesCredentials).toBe(false);
-  expect(exposesInternals).toBe(false);
+Then('the login attempt is rejected without echoing credentials or internal errors', async ({ apiState, $testInfo }) => {
+  await assertWithResponse(apiState.invalidLoginResponse, apiState, $testInfo, async (diagnostic) => {
+    expect(apiState.invalidLoginResponse.status(), diagnostic).toBe(401);
+    const body = await apiState.invalidLoginResponse.text();
+    const echoesCredentials = body.includes(apiState.invalidLoginEmail)
+      || body.includes(apiState.invalidLoginPassword);
+    const exposesInternals = /exception|stack trace|sqlstate|jdbc|hibernate|select\s+.+\s+from/i.test(body);
+    expect(echoesCredentials, diagnostic).toBe(false);
+    expect(exposesInternals, diagnostic).toBe(false);
+  });
 });
 
-Then('duplicate XSS protection headers do not conflict', async ({ apiState }) => {
-  expect([401, 403]).toContain(apiState.securityHeadersResponse.status());
-  const headers = await apiState.securityHeadersResponse.headersArray();
-  const xssProtectionValues = headers
-    .filter(({ name }) => name.toLowerCase() === 'x-xss-protection')
-    .map(({ value }) => value.trim().toLowerCase());
-  expect(new Set(xssProtectionValues).size).toBeLessThanOrEqual(1);
+Then('duplicate XSS protection headers do not conflict', async ({ apiState, $testInfo }) => {
+  await assertWithResponse(apiState.securityHeadersResponse, apiState, $testInfo, async (diagnostic) => {
+    expect([401, 403], diagnostic).toContain(apiState.securityHeadersResponse.status());
+    const headers = await apiState.securityHeadersResponse.headersArray();
+    const xssProtectionValues = headers
+      .filter(({ name }) => name.toLowerCase() === 'x-xss-protection')
+      .map(({ value }) => value.trim().toLowerCase());
+    expect(new Set(xssProtectionValues).size, diagnostic).toBeLessThanOrEqual(1);
+  });
 });
 
 Then('the invalid identifier is rejected without internal error details', async ({ apiState }) => {

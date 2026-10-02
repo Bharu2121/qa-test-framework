@@ -1,0 +1,331 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: features/admin/AdminSecurity.feature.spec.js >> Administrator security and authentication controls >> Protected API error responses do not contain conflicting XSS policy headers
+- Location: .features-gen/features/admin/AdminSecurity.feature.spec.js:105:3
+
+# Error details
+
+```
+Error: Response: 401 https://api.jonoconsultancy.com/api/v1/auth/profile
+Headers: [
+  {
+    "name": "Date",
+    "value": "Tue, 29 Sep 2026 17:36:04 GMT"
+  },
+  {
+    "name": "Content-Type",
+    "value": "text/html;charset=ISO-8859-1"
+  },
+  {
+    "name": "Connection",
+    "value": "keep-alive"
+  },
+  {
+    "name": "Server",
+    "value": "cloudflare"
+  },
+  {
+    "name": "Nel",
+    "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+  },
+  {
+    "name": "Vary",
+    "value": "Origin"
+  },
+  {
+    "name": "Vary",
+    "value": "Access-Control-Request-Method"
+  },
+  {
+    "name": "Vary",
+    "value": "Access-Control-Request-Headers"
+  },
+  {
+    "name": "X-Content-Type-Options",
+    "value": "nosniff"
+  },
+  {
+    "name": "X-Content-Type-Options",
+    "value": "nosniff"
+  },
+  {
+    "name": "X-XSS-Protection",
+    "value": "0"
+  },
+  {
+    "name": "X-XSS-Protection",
+    "value": "1; mode=block"
+  },
+  {
+    "name": "Cache-Control",
+    "value": "no-cache, no-store, max-age=0, must-revalidate"
+  },
+  {
+    "name": "Pragma",
+    "value": "no-cache"
+  },
+  {
+    "name": "Expires",
+    "value": "0"
+  },
+  {
+    "name": "Strict-Transport-Security",
+    "value": "max-age=31536000 ; includeSubDomains"
+  },
+  {
+    "name": "X-Frame-Options",
+    "value": "DENY"
+  },
+  {
+    "name": "X-Frame-Options",
+    "value": "DENY"
+  },
+  {
+    "name": "Referrer-Policy",
+    "value": "strict-origin-when-cross-origin"
+  },
+  {
+    "name": "Referrer-Policy",
+    "value": "strict-origin-when-cross-origin"
+  },
+  {
+    "name": "Content-Language",
+    "value": "en"
+  },
+  {
+    "name": "cf-cache-status",
+    "value": "DYNAMIC"
+  },
+  {
+    "name": "Report-To",
+    "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=j9fn4jwQuUCiN90ybcq33krhbqEiS30JizSsRk5RjVSyZ0vW4ohDOni23996MwWXyPYh9wCHNWJ91Xv%2FrXbiZ1lmIYkeOsJRpzNxn4ttdDqGzQk27iOMK78WbS9%2B2TA%2FTCvPRc%2Fcj%2Fcnkd2B5V8N5sApUlKxlA%3D%3D\"}]}"
+  },
+  {
+    "name": "CF-RAY",
+    "value": "a42cbf7c7c683ce5-MAA"
+  },
+  {
+    "name": "alt-svc",
+    "value": "h3=\":443\"; ma=86400"
+  }
+]
+Body: 
+
+expect(received).toBeLessThanOrEqual(expected)
+
+Expected: <= 1
+Received:    2
+```
+
+# Test source
+
+```ts
+  254 | When('I send an unauthenticated GET request to protected endpoint {string}', async ({ apiContext, apiState }, endpoint) => {
+  255 |   const url = new URL(endpoint, `${apiState.securityProbeBaseUrl}/`).toString();
+  256 |   apiState.securityProbeResponse = await apiContext.get(url, { maxRedirects: 0 });
+  257 | });
+  258 | 
+  259 | When('I send a GET request to protected endpoint {string} with bearer token {string}', async ({ apiContext, apiState }, endpoint, token) => {
+  260 |   const url = new URL(endpoint, `${apiState.securityProbeBaseUrl}/`).toString();
+  261 |   apiState.securityProbeResponse = await apiContext.get(url, {
+  262 |     headers: { Authorization: `Bearer ${token}` },
+  263 |     maxRedirects: 0,
+  264 |   });
+  265 | });
+  266 | 
+  267 | When('I request my profile with the read-only security probe', async ({ apiContext, apiState }) => {
+  268 |   const url = new URL('/api/v1/auth/profile', `${apiState.securityProbeBaseUrl}/`).toString();
+  269 |   apiState.ownProfileResponse = await apiContext.get(url, {
+  270 |     headers: { Authorization: `Bearer ${apiState.securityProbeToken}` },
+  271 |     maxRedirects: 0,
+  272 |   });
+  273 | });
+  274 | 
+  275 | When('I request dashboard statistics with the read-only security probe', async ({ apiContext, apiState }) => {
+  276 |   const url = new URL('/api/v1/admin/dashboard/stats', `${apiState.securityProbeBaseUrl}/`).toString();
+  277 |   apiState.securityProbeDashboardResponse = await apiContext.get(url, {
+  278 |     headers: { Authorization: `Bearer ${apiState.securityProbeToken}` },
+  279 |     maxRedirects: 0,
+  280 |   });
+  281 | });
+  282 | 
+  283 | When('I submit one invalid login with synthetic non-existent credentials', async ({ apiContext, apiState }) => {
+  284 |   const url = new URL('/api/v1/auth/login', `${apiState.securityProbeBaseUrl}/`).toString();
+  285 |   apiState.invalidLoginEmail = `qa.security.${Date.now()}@example.invalid`;
+  286 |   apiState.invalidLoginPassword = 'NotARealPassword!2026';
+  287 |   apiState.invalidLoginResponse = await apiContext.post(url, {
+  288 |     data: { email: apiState.invalidLoginEmail, password: apiState.invalidLoginPassword },
+  289 |     maxRedirects: 0,
+  290 |   });
+  291 | });
+  292 | 
+  293 | When('I inspect protected profile response headers using HEAD', async ({ apiContext, apiState }) => {
+  294 |   const url = new URL('/api/v1/auth/profile', `${apiState.securityProbeBaseUrl}/`).toString();
+  295 |   apiState.securityHeadersResponse = await apiContext.head(url, { maxRedirects: 0 });
+  296 | });
+  297 | 
+  298 | When('I request admin lead detail for identifier {string}', async ({ apiContext, apiState }, id) => {
+  299 |   const client = new AdminLeadsApiClient({ request: apiContext, baseUrl: apiState.securityProbeBaseUrl });
+  300 |   apiState.securityProbeResponse = await client.getLeadDetail(id, {
+  301 |     headers: { Authorization: `Bearer ${apiState.securityProbeToken}` },
+  302 |   });
+  303 | });
+  304 | 
+  305 | Then('the protected request is rejected without exposing data', async ({ apiState, $testInfo }) => {
+  306 |   await assertWithResponse(apiState.securityProbeResponse, apiState, $testInfo, (diagnostic) => {
+  307 |     expect([401, 403], diagnostic).toContain(apiState.securityProbeResponse.status());
+  308 |   });
+  309 | });
+  310 | 
+  311 | Then('the profile belongs to the configured administrator and exposes no credentials', async ({ apiState, $testInfo }) => {
+  312 |   await assertWithResponse(apiState.ownProfileResponse, apiState, $testInfo, async (diagnostic) => {
+  313 |     expect(apiState.ownProfileResponse.status(), diagnostic).toBe(200);
+  314 |     const body = await apiState.ownProfileResponse.json();
+  315 |     const result = await validateAgainstSchema('admin_profile.json', body);
+  316 |     expect(result.valid, `${diagnostic}\nSchema errors: ${JSON.stringify(result.errors)}`).toBe(true);
+  317 |     expect(body.data.email === process.env.ADMIN_USER, diagnostic).toBe(true);
+  318 |     const exposedCredentials = ['password', 'passwordHash', 'token', 'refreshToken']
+  319 |       .some((field) => Object.hasOwn(body.data, field));
+  320 |     expect(exposedCredentials, diagnostic).toBe(false);
+  321 |   });
+  322 | });
+  323 | 
+  324 | Then('the dashboard response contains non-negative aggregate counters', async ({ apiState, $testInfo }) => {
+  325 |   await assertWithResponse(apiState.securityProbeDashboardResponse, apiState, $testInfo, async (diagnostic) => {
+  326 |     expect(apiState.securityProbeDashboardResponse.status(), diagnostic).toBe(200);
+  327 |     const body = await apiState.securityProbeDashboardResponse.json();
+  328 |     const result = await validateAgainstSchema('dashboard_stats.json', body);
+  329 |     expect(result.valid, `${diagnostic}\nSchema errors: ${JSON.stringify(result.errors)}`).toBe(true);
+  330 |     const counters = Object.values(body.data);
+  331 |     expect(counters.length > 0 && counters.every((counter) => Number.isFinite(counter) && counter >= 0), diagnostic).toBe(true);
+  332 |   });
+  333 | });
+  334 | 
+  335 | Then('the login attempt is rejected without echoing credentials or internal errors', async ({ apiState, $testInfo }) => {
+  336 |   await assertWithResponse(apiState.invalidLoginResponse, apiState, $testInfo, async (diagnostic) => {
+  337 |     expect(apiState.invalidLoginResponse.status(), diagnostic).toBe(401);
+  338 |     const body = await apiState.invalidLoginResponse.text();
+  339 |     const echoesCredentials = body.includes(apiState.invalidLoginEmail)
+  340 |       || body.includes(apiState.invalidLoginPassword);
+  341 |     const exposesInternals = /exception|stack trace|sqlstate|jdbc|hibernate|select\s+.+\s+from/i.test(body);
+  342 |     expect(echoesCredentials, diagnostic).toBe(false);
+  343 |     expect(exposesInternals, diagnostic).toBe(false);
+  344 |   });
+  345 | });
+  346 | 
+  347 | Then('duplicate XSS protection headers do not conflict', async ({ apiState, $testInfo }) => {
+  348 |   await assertWithResponse(apiState.securityHeadersResponse, apiState, $testInfo, async (diagnostic) => {
+  349 |     expect([401, 403], diagnostic).toContain(apiState.securityHeadersResponse.status());
+  350 |     const headers = await apiState.securityHeadersResponse.headersArray();
+  351 |     const xssProtectionValues = headers
+  352 |       .filter(({ name }) => name.toLowerCase() === 'x-xss-protection')
+  353 |       .map(({ value }) => value.trim().toLowerCase());
+> 354 |     expect(new Set(xssProtectionValues).size, diagnostic).toBeLessThanOrEqual(1);
+      |                                                           ^ Error: Response: 401 https://api.jonoconsultancy.com/api/v1/auth/profile
+  355 |   });
+  356 | });
+  357 | 
+  358 | Then('the invalid identifier is rejected without internal error details', async ({ apiState }) => {
+  359 |   expect([400, 404]).toContain(apiState.securityProbeResponse.status());
+  360 |   const body = await apiState.securityProbeResponse.text();
+  361 |   expect(body).not.toMatch(/exception|stack trace|sqlstate|jdbc|hibernate|select\s+.+\s+from/i);
+  362 | });
+  363 | 
+  364 | When('I log in with a valid admin credential pair', async ({ apiState }) => {
+  365 |   const mockClient = apiState.mockSecurityClient;
+  366 |   const response = await mockClient.request.fetch('https://api.jonoconsultancy.com/api/v1/auth/login', {
+  367 |     method: 'POST',
+  368 |     data: { email: 'admin@example.com', password: 'StrongPass!123' },
+  369 |     headers: { 'Content-Type': 'application/json' },
+  370 |   });
+  371 |   apiState.securityLoginResponse = response;
+  372 |   apiState.securityLoginBody = await response.json();
+  373 |   apiState.securityToken = response.token;
+  374 | });
+  375 | 
+  376 | Then('the security login response has status 200 with a bearer token', async ({ apiState }) => {
+  377 |   expect(apiState.securityLoginResponse.status()).toBe(200);
+  378 |   expect(apiState.securityToken).toEqual(expect.any(String));
+  379 |   expect(apiState.securityLoginBody.data.token).toContain('.');
+  380 |   expect(apiState.securityLoginBody.data.tokenType).toBe('Bearer');
+  381 | });
+  382 | 
+  383 | Then('the failure response for invalid credentials is 401 without exposing the password', async ({ apiState }) => {
+  384 |   const response = await apiState.mockSecurityClient.request.fetch('https://api.jonoconsultancy.com/api/v1/auth/login', {
+  385 |     method: 'POST',
+  386 |     data: { email: 'admin@example.com', password: 'WrongPass!123' },
+  387 |     headers: { 'Content-Type': 'application/json' },
+  388 |   });
+  389 |   const body = await response.json();
+  390 |   expect(response.status()).toBe(401);
+  391 |   expect(body.message).toBe('Invalid email or password');
+  392 |   expect(JSON.stringify(body)).not.toContain('WrongPass!123');
+  393 | });
+  394 | 
+  395 | When('I request the protected profile without a bearer token', async ({ apiState }) => {
+  396 |   const response = await apiState.mockSecurityClient.request.fetch('https://api.jonoconsultancy.com/api/v1/auth/profile', {
+  397 |     method: 'GET',
+  398 |     headers: { 'Content-Type': 'application/json' },
+  399 |   });
+  400 |   apiState.profileWithoutTokenResponse = response;
+  401 | });
+  402 | 
+  403 | Then('the profile request without a token is rejected with 401', async ({ apiState }) => {
+  404 |   expect(apiState.profileWithoutTokenResponse.status()).toBe(401);
+  405 | });
+  406 | 
+  407 | Then('a malformed JWT is rejected', async ({ apiState }) => {
+  408 |   const response = await apiState.mockSecurityClient.request.fetch('https://api.jonoconsultancy.com/api/v1/auth/profile', {
+  409 |     method: 'GET',
+  410 |     headers: { Authorization: 'Bearer not-a-valid-jwt', 'Content-Type': 'application/json' },
+  411 |   });
+  412 |   expect(response.status()).toBe(401);
+  413 | });
+  414 | 
+  415 | Then('an expired JWT is rejected', async ({ apiState }) => {
+  416 |   const response = await apiState.mockSecurityClient.request.fetch('https://api.jonoconsultancy.com/api/v1/auth/profile', {
+  417 |     method: 'GET',
+  418 |     headers: { Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0Iiwicm9sZSI6IkFETUlOIiwidXNlcm5hbWUiOiJhZG1pbiIsImV4cCI6MTQ3NDU2MzQwMH0.signature', 'Content-Type': 'application/json' },
+  419 |   });
+  420 |   expect(response.status()).toBe(401);
+  421 | });
+  422 | 
+  423 | Then('a tampered JWT is rejected', async ({ apiState }) => {
+  424 |   const response = await apiState.mockSecurityClient.request.fetch('https://api.jonoconsultancy.com/api/v1/auth/profile', {
+  425 |     method: 'GET',
+  426 |     headers: { Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0Iiwicm9sZSI6IkFETUlOIiwidXNlcm5hbWUiOiJhZG1pbiIsImV4cCI6NDY0OTQ2NDAwMH0.modified', 'Content-Type': 'application/json' },
+  427 |   });
+  428 |   expect([401, 403]).toContain(response.status());
+  429 | });
+  430 | 
+  431 | When('I request a password recovery token for a registered admin email', async ({ apiState }) => {
+  432 |   const response = await apiState.mockSecurityClient.request.fetch('https://api.jonoconsultancy.com/api/v1/auth/forgot-password', {
+  433 |     method: 'POST',
+  434 |     data: { email: 'admin@example.com' },
+  435 |     headers: { 'Content-Type': 'application/json' },
+  436 |   });
+  437 |   apiState.recoveryResponse = response;
+  438 |   apiState.recoveryBody = await response.json();
+  439 | });
+  440 | 
+  441 | Then('the recovery request succeeds and a token is issued', async ({ apiState }) => {
+  442 |   expect(apiState.recoveryResponse.status()).toBe(200);
+  443 |   expect(apiState.recoveryBody.data.recoveryToken).toEqual(expect.any(String));
+  444 |   apiState.validRecoveryToken = apiState.recoveryBody.data.recoveryToken;
+  445 | });
+  446 | 
+  447 | Then('an invalid recovery key is rejected', async ({ apiState }) => {
+  448 |   const response = await apiState.mockSecurityClient.request.fetch('https://api.jonoconsultancy.com/api/v1/auth/reset-password', {
+  449 |     method: 'POST',
+  450 |     data: { recoveryToken: 'bad-key', password: 'NewPass!123', confirmPassword: 'NewPass!123' },
+  451 |     headers: { 'Content-Type': 'application/json' },
+  452 |   });
+  453 |   expect(response.status()).toBe(400);
+  454 | });
+```

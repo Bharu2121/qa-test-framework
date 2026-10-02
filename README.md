@@ -38,13 +38,13 @@ Never commit credentials or recovery tokens, and do not include secrets in scree
 
 The default `@Security` scenarios use deterministic local mocks; they do not establish that the deployed service enforces those controls. In particular, the JWT and recovery-key fixtures do not prove cryptographic expiry validation, and the mock password policy is not confirmed as the service policy. Read-only probes require `ALLOW_READONLY_SECURITY_PROBES=true` and an explicit `SECURITY_TEST_BASE_URL`. Production probes additionally require `ALLOW_PRODUCTION_SECURITY_PROBES=true` and are restricted to `https://api.jonoconsultancy.com`; redirects are not followed. Unauthenticated/malformed-token probes check status only and do not read response bodies. The own-profile/dashboard probe performs a normal login `POST` with configured `ADMIN_USER` and `ADMIN_PASS`, then reads only that account's profile and aggregate counters. Invalid lead-ID probes are deliberately excluded from the production-safe tag. These tests do not validate login throttling, password recovery against a real account, lower-privilege roles, or cross-user BOLA/IDOR.
 
-To run only the selected production-safe probes after configuring authorized admin credentials in `.env`:
+To run only the selected production-safe probes, configure authorized admin credentials in `.env` for the profile/dashboard probe, then run:
 
 ```sh
-ALLOW_READONLY_SECURITY_PROBES=true ALLOW_PRODUCTION_SECURITY_PROBES=true SECURITY_TEST_BASE_URL=https://api.jonoconsultancy.com npx playwright test --grep @ProductionSafeProbe
+npm run test:production-safe
 ```
 
-Do not use this command unless authorized to test the production API. Do not enable `@IdProbe` or live registration against production.
+This command explicitly enables the production-safe probe gates and targets `https://api.jonoconsultancy.com`. Use it only when authorized to test production. The profile/dashboard scenario skips if `ADMIN_USER` or `ADMIN_PASS` is missing. Do not enable `@IdProbe` or live registration against production.
 
 The repeated-login mock scenario compares known-account and unknown-account failure responses, but does not implement or verify rate limiting. No application rate-limit defect can be concluded from that mock. Before reporting a defect, run the opt-in probes against the authorized test environment and capture sanitized request/response evidence without credentials or tokens.
 
@@ -96,6 +96,20 @@ After the repository is pushed to GitHub and Actions are enabled, pushing to `ma
 ### Jenkins
 
 The root `Jenkinsfile` defines a Docker-based declarative pipeline using `mcr.microsoft.com/playwright:v1.59.0-noble`. The Jenkins agent must support Docker and have network access to the configured test environment. The pipeline checks out the repository, installs Java 17 and npm dependencies, runs smoke and regression stages, and archives Playwright HTML, Allure results/reports, and test results even when a stage fails.
+
+#### Local Jenkins
+
+Docker Desktop must be installed and running. From the repository root, start the local controller with:
+
+```sh
+DOCKER_GID="$(stat -f '%g' /var/run/docker.sock)" docker compose -f compose.jenkins.yaml up -d --build
+```
+
+Open `http://localhost:8080`, complete the initial Jenkins setup, then create a **Pipeline** item configured as **Pipeline script from SCM**. Use the repository URL, branch `main`, and script path `Jenkinsfile`. Add the `jono-admin-credentials` username/password credential with an authorized test account before running the pipeline. The controller's initial unlock password is available inside the container with `docker exec jenkins-local cat /var/jenkins_home/secrets/initialAdminPassword`.
+
+This local controller is bound to loopback and mounts the host Docker socket so Docker Pipeline can launch test agents. Access to that socket can control the host Docker daemon; do not expose this controller publicly or reuse this configuration for hosting. Stop it with `docker compose -f compose.jenkins.yaml down`; Jenkins data remains in the `jenkins_home` volume. Remove that volume only when you intend to delete the local Jenkins configuration and job history.
+
+The checked-in `Jenkinsfile` currently targets production URLs. Do not start a build until the target environment and test account are authorized; the smoke and regression stages run by default, and enabling `RUN_LIVE_REGISTRATION` creates an external record.
 
 1. Add a Jenkins **Username with password** credential with ID `jono-admin-credentials`. Use an authorized test account; the username maps to `ADMIN_USER` and the password maps to `ADMIN_PASS`.
 2. Create a Pipeline or Multibranch Pipeline job pointing to this repository and use the repository's `Jenkinsfile`.

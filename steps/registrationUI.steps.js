@@ -8,7 +8,11 @@ async function fillPersonalInformation(page) {
   await page.locator('input[name="lastName"]').fill('UI Example');
   await page.locator('input[name="email"]').fill(`qa.ui.${Date.now()}@example.invalid`);
   await page.locator('input[name="mobile"]').fill('9876543210');
-  await page.locator('input[name="dateOfBirth"]').fill('1998-04-12');
+  await page.getByText('Prefer not to say', { exact: true }).click();
+  const dateOfBirth = page.locator('input[name="dateOfBirth"]');
+  await dateOfBirth.click();
+  await dateOfBirth.fill('1998-04-12');
+  await expect(dateOfBirth).toHaveValue('1998-04-12');
   await page.locator('input[name="city"]').fill('Test City');
   await page.locator('select[name="state"]').selectOption({ label: 'Telangana' });
 }
@@ -42,6 +46,7 @@ Then('I see the personal-information inputs and Continue action', async ({ page 
   for (const field of ['firstName', 'lastName', 'email', 'mobile', 'dateOfBirth', 'city', 'state']) {
     await expect(page.locator(`[name="${field}"]`)).toBeVisible();
   }
+  await expect(page.getByRole('radio', { name: 'Prefer not to say' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
 });
 

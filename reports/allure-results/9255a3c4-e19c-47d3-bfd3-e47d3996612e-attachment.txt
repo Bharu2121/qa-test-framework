@@ -1,0 +1,104 @@
+Response: 401 https://api.jonoconsultancy.com/api/v1/auth/profile
+Headers: [
+  {
+    "name": "Date",
+    "value": "Tue, 29 Sep 2026 17:18:51 GMT"
+  },
+  {
+    "name": "Content-Type",
+    "value": "text/html;charset=ISO-8859-1"
+  },
+  {
+    "name": "Connection",
+    "value": "keep-alive"
+  },
+  {
+    "name": "Server",
+    "value": "cloudflare"
+  },
+  {
+    "name": "Nel",
+    "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+  },
+  {
+    "name": "Vary",
+    "value": "Origin"
+  },
+  {
+    "name": "Vary",
+    "value": "Access-Control-Request-Method"
+  },
+  {
+    "name": "Vary",
+    "value": "Access-Control-Request-Headers"
+  },
+  {
+    "name": "X-Content-Type-Options",
+    "value": "nosniff"
+  },
+  {
+    "name": "X-Content-Type-Options",
+    "value": "nosniff"
+  },
+  {
+    "name": "X-XSS-Protection",
+    "value": "0"
+  },
+  {
+    "name": "X-XSS-Protection",
+    "value": "1; mode=block"
+  },
+  {
+    "name": "Cache-Control",
+    "value": "no-cache, no-store, max-age=0, must-revalidate"
+  },
+  {
+    "name": "Pragma",
+    "value": "no-cache"
+  },
+  {
+    "name": "Expires",
+    "value": "0"
+  },
+  {
+    "name": "Strict-Transport-Security",
+    "value": "max-age=31536000 ; includeSubDomains"
+  },
+  {
+    "name": "X-Frame-Options",
+    "value": "DENY"
+  },
+  {
+    "name": "X-Frame-Options",
+    "value": "DENY"
+  },
+  {
+    "name": "Referrer-Policy",
+    "value": "strict-origin-when-cross-origin"
+  },
+  {
+    "name": "Referrer-Policy",
+    "value": "strict-origin-when-cross-origin"
+  },
+  {
+    "name": "Content-Language",
+    "value": "en"
+  },
+  {
+    "name": "cf-cache-status",
+    "value": "DYNAMIC"
+  },
+  {
+    "name": "Report-To",
+    "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=PEjmcpu1fPxOIFNWNyN4gupNsn0P77EZt3yfBeZEPSLGY6nwbjg9xbYVP40kwM8HfEgNu5pQ9x%2B1021CYdMD8b%2Fw0mef9r%2BfLgmAX4AF9ZRsxzCWAugOEp2KuS8BmLwJ1RDRc%2BykLzz1%2B2jQj8ltaRIA5%2BOGRg%3D%3D\"}]}"
+  },
+  {
+    "name": "CF-RAY",
+    "value": "a42ca6403a67b72a-MAA"
+  },
+  {
+    "name": "alt-svc",
+    "value": "h3=\":443\"; ma=86400"
+  }
+]
+Body: 
